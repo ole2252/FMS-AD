@@ -42,6 +42,8 @@
     <a href="https://github.com/ole2252/FMS-AD/tree/main/data">Data sets used for testing the framework</a>
   <br /><br />
     <a href="https://github.com/ole2252/FMS-AD/tree/main/test_code">Notebooks that were created during the research to test small elements of the framework</a>
+  <br /><br />
+    <a href="https://github.com/ole2252/FMS-AD/blob/main/Correlation%20analysis.ipynb">Notebooks that shows some basic correlation analysis plots</a>
 
   
 
