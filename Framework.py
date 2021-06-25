@@ -63,6 +63,21 @@ from xgboost import XGBClassifier
 
 
 class FMSAD:
+    '''
+    FMS-AD an automated feature and model selectionanomaly detection framework for decentralized systems This repo contains the code for the FMS-AD framework
+
+    Parameters
+    ----------
+    X : Pandas DataFrame
+        Data set feature input
+    Y : Numpy Array
+        Labels for the data
+    supervised_models : List
+        List with supervised models
+    unsupervised_models : List
+        List with unsupervised models
+    '''
+
     def __init__(self, X, Y, supervised_models, unsupervised_models):
         self.X = X
         self.Y = Y
@@ -71,7 +86,14 @@ class FMSAD:
         self.all_models = unsupervised_models+supervised_models
     
     def correlation_analysis(self, plot_heatmap=False):
-        '''Calculate label correlation with respect to output label'''
+        '''Calculate label correlation with respect to output label
+        
+        Parameters
+        ----------
+        plot_heatmap : Bool
+            Set True if you want to plot a heatmap of the correlation
+        '''
+
         correlation_txn_falure = {}
 
         for label in self.X.columns:
@@ -90,7 +112,14 @@ class FMSAD:
         return txn_falure_correlation
     
     def correlation_features(self, r_lim=0.5, p_lim=0.05):
-        '''Select features based specified boundaries'''
+        '''Select features based specified boundaries
+        Parameters
+        ----------
+        r_lim : float
+            set limit for R-value
+        p_lim : float
+            set limit for P-value
+        '''
         txn_falure_correlation = self.correlation_analysis()
         selected_features = txn_falure_correlation[np.abs(txn_falure_correlation.r) >= r_lim]
         selected_features = selected_features[selected_features['p-value'] <= p_lim]
@@ -99,19 +128,38 @@ class FMSAD:
         return selected_features_names
     
     def evaluate(self, y_real, y_pred):
+        '''
+        Evaluate model performance
+
+        Parameters
+        ----------
+        y_real : NumPy Array
+            array with real labels
+        y_reY_predal : NumPy Array
+            array with predicted labels
+        '''
         from sklearn import metrics
         accuracy = accuracy_score(y_real,y_pred)
         precision = precision_score(y_real, y_pred, average='macro')
         recall = metrics.recall_score(y_real, y_pred, average='macro')
         f1_score = metrics.f1_score(y_real, y_pred, average='macro') 
 
-        # AUC curve
         fpr, tpr, threshold = metrics.roc_curve(y_real, y_pred)
         roc_auc = metrics.auc(fpr, tpr)
         return accuracy, precision, recall, f1_score, fpr, tpr, roc_auc
 
     # since boolean predictions may be wrong way around
     def result(self, y_real, y_pred):
+        '''
+        Evaluate model performance
+
+        Parameters
+        ----------
+        y_real : NumPy Array
+            array with real labels
+        y_reY_predal : NumPy Array
+            array with predicted labels
+        '''
         from sklearn import metrics
         if  metrics.f1_score(y_real, y_pred, average='macro') >  metrics.f1_score(y_real, [not y for y in y_pred], average='macro'):
             return self.evaluate(y_real, y_pred)
@@ -119,6 +167,14 @@ class FMSAD:
             return self.evaluate(y_real, [not y for y in y_pred])
 
     def show_res(self, res):
+        '''
+        Prin results of model
+
+        Parameters
+        ----------
+        res : list
+            list with model results
+        '''
         accuracy, precision, recall, f1_score, time = res
         print("Accuracy", accuracy)
         print("Precision", precision)
@@ -127,6 +183,14 @@ class FMSAD:
         print("Time", time)
 
     def flip_if_inverted(self, Y_pred):
+        '''
+        Anomalies are the label with the that occur the least,
+        sometimes the boolean classification is the wrong way around
+        Parameters
+        ----------
+        Y_pred : NumPy Array
+            array with predicted labels
+        '''
         Y_pred = np.array([0 if i != 1 else 1 for i in Y_pred ])
         if len(Y_pred[Y_pred == 1]) < len(Y_pred[Y_pred == 0]):
 
@@ -135,6 +199,20 @@ class FMSAD:
             return Y_pred
 
     def validate_model(self, model,undersample=False, oversample=False, flip=True):
+        '''
+        Validate the performance of the given models
+
+        Parameters
+        ----------
+        model : List
+            list of models
+        undersample : Boolean
+            True if data needs to be undersampled
+        oversample : Boolean
+            True if data needs to be oversampled
+        flip : Boolean
+            True if data needs to be flipt if classifications are inverted
+        '''
         accuracy_, precision_, recall_, f1_score_,fpr_, tpr_, roc_auc_, time_ = [],[],[],[],[], [],[],[]
 
         shuffle_split = StratifiedShuffleSplit(n_splits=5, test_size=0.4, random_state=0)
@@ -179,6 +257,15 @@ class FMSAD:
         return np.mean(accuracy_), np.mean(precision_), np.mean(recall_), np.mean(f1_score_), np.mean(time_)
 
     def optimize_voting_parameters(self, weight_permuations):
+        '''
+        Optimize voting parameters for (un)supervised models
+
+        Parameters
+        ----------
+        weight_permuations : List
+            list of weights to test
+        '''
+        
         tuning_res = pd.DataFrame(columns = ["w1", "w2", 'w3', "accuracy", "precision", "recall",\
                                              "f1_score", "time"])
 
@@ -207,6 +294,20 @@ class FMSAD:
     
     
     def weighted_vote_ensamble(self, models, weights=[1,1,1,1,1,1], undersample=False, oversample=False):
+        '''
+        Optimize voting parameters for all models
+
+        Parameters
+        ----------
+        model : List
+            list of models
+        weights : List
+            list of weights to test
+        undersample : Boolean
+            True if data needs to be undersampled
+        oversample : Boolean
+            True if data needs to be oversampled
+        '''
         accuracy_, precision_, recall_, f1_score_,fpr_, tpr_, roc_auc_, time_ = [],[],[],[],[], [],[],[]
 
         shuffle_split = StratifiedShuffleSplit(n_splits=5, test_size=0.4, random_state=0)
@@ -269,6 +370,21 @@ class FMSAD:
         return np.mean(accuracy_), np.mean(precision_), np.mean(recall_), np.mean(f1_score_), np.mean(time_)
     
     def optimize_all_voting_parameters(self, models, weight_permutations, undersample=False, oversample=False):
+        '''
+        Automate the optimzation for voting parameters for all models
+
+        Parameters
+        ----------
+        model : List
+            list of models
+        weight_permutations : List
+            list of weights to test
+        undersample : Boolean
+            True if data needs to be undersampled
+        oversample : Boolean
+            True if data needs to be oversampled
+        '''
+
         tuning_res = pd.DataFrame(columns = ["w1", "w2", 'w3', 'w4', 'w5','w6', "accuracy", "precision", "recall",\
                                              "f1_score", "time"])
 
@@ -288,6 +404,18 @@ class FMSAD:
 
 
     def stack(self, models, undersample=False, oversample=False):
+        '''
+        Stacking algorithm
+
+        Parameters
+        ----------
+        model : List
+            list of models
+        undersample : Boolean
+            True if data needs to be undersampled
+        oversample : Boolean
+            True if data needs to be oversampled
+        '''
         X_train, X_test, Y_train, Y_test = train_test_split(self.X,self.Y, test_size=0.4, random_state=22)
 
         if undersample:
